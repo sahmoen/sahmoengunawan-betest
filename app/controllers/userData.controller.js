@@ -3,23 +3,8 @@ const User = db.user;
 const { comparePass, hashPassword } = require("../helpers/bcrypt");
 const { tokenUser } = require("../helpers/token");
 const redis = require("redis");
-// const client = redis.createClient();
 const client = redis.createClient();
-client
-  .connect()
-  .then(async (res) => {
-    console.log("connected");
-    // Write your own code here
-
-    // Example
-    const value = await client.lRange("data", 0, -1);
-    console.log(value.length);
-    console.log(value);
-    client.quit();
-  })
-  .catch((err) => {
-    console.log("err happened" + err);
-  });
+const redisKey = User;
 
 exports.create = (req, res) => {
   const { userName, accountNumber, emailAddress, identityNumber } = req.body;
@@ -66,10 +51,9 @@ exports.login = (req, res, next) => {
 };
 
 exports.findAll = (req, res) => {
-  const redisKey = User;
   client.get(redisKey, (err, dataRedis) => {
     if (data) {
-      res.status(200).send({ isCached: true, data: dataRedis });
+      res.status(200).send({ isCached: true, data: JSON.parse(dataRedis) });
     } else {
       User.find()
         .then((data) => {
@@ -78,6 +62,10 @@ exports.findAll = (req, res) => {
           // console.log(data);
         })
         .catch((err) => res.status(500).send({ message: err.message }));
+      // User.find({}, (err, fetchData) => {
+      //   client.set(redisKey, JSON.stringify(fetchData), "EX", 60); // simpan hasil query ke dalam redis dalam bentuk JSON yang sudah di jadikan string, kita setting expired selaman 60 (detik)
+      //   res.status(200).send({ data: fetchData });
+      // }); // fetch data dari mongoDB
     }
   });
 };

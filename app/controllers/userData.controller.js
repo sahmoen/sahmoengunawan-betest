@@ -2,38 +2,30 @@ const db = require("../models");
 const User = db.user;
 const { comparePass, hashPassword } = require("../helpers/bcrypt");
 const { tokenUser } = require("../helpers/token");
-const redis = require("redis");
-// const client = redis.createClient();
-const client = redis.createClient();
-client
-  .connect()
-  .then(async (res) => {
-    console.log("connected");
-    // Write your own code here
 
-    // Example
-    const value = await client.lRange("data", 0, -1);
-    console.log(value.length);
-    console.log(value);
-    client.quit();
-  })
-  .catch((err) => {
-    console.log("err happened" + err);
-  });
-
-exports.create = (req, res) => {
+exports.create = (req, res, next) => {
   const { userName, accountNumber, emailAddress, identityNumber } = req.body;
   const password = hashPassword(req.body.password);
 
-  User.create({
-    userName,
-    password,
-    accountNumber,
+  User.findOne({
     emailAddress,
-    identityNumber,
   })
-    .then(() => res.send({ message: "Success Add Data" }))
-    .catch((err) => res.status(500).send({ message: err.message }));
+    .then((data) => {
+      if (!data) {
+        User.create({
+          userName,
+          password,
+          accountNumber,
+          emailAddress,
+          identityNumber,
+        })
+          .then(() => res.send({ message: "Success Add Data" }))
+          .catch((err) => res.status(500).send({ message: err.message }));
+      } else {
+        throw { name: "Not Acceptable" };
+      }
+    })
+    .catch((err) => next(err));
 };
 
 exports.login = (req, res, next) => {
@@ -66,20 +58,12 @@ exports.login = (req, res, next) => {
 };
 
 exports.findAll = (req, res) => {
-  const redisKey = User;
-  client.get(redisKey, (err, dataRedis) => {
-    if (data) {
-      res.status(200).send({ isCached: true, data: dataRedis });
-    } else {
-      User.find()
-        .then((data) => {
-          client.set(redisKey, JSON.stringify(data), "EX", 60);
-          res.send(data);
-          // console.log(data);
-        })
-        .catch((err) => res.status(500).send({ message: err.message }));
-    }
-  });
+  User.find()
+    .then((data) => {
+      res.send(data);
+      // console.log(data);
+    })
+    .catch((err) => res.status(500).send({ message: err.message }));
 };
 
 exports.findJustOne = (req, res) => {

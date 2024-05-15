@@ -1,6 +1,8 @@
 const express = require("express");
+require("dotenv").config();
 const cors = require("cors");
 const db = require("./app/models");
+const errorHandler = require("./app/middlewares/errorHandler");
 
 const app = express();
 
@@ -31,6 +33,8 @@ db.mongoose
 
 //call routes
 require("./app/routes/user.routes")(app);
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Server Started in Port ${PORT}`));
